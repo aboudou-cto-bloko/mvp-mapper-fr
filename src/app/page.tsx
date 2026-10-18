@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { VoirExemple } from "@/components/exemple-projet";
 import { MvpMapPreview } from "@/components/mvp-map-preview";
 import { SiteHeader } from "@/components/site-header";
 
@@ -25,6 +26,7 @@ export default function Home() {
             >
               Cartographier mon MVP
             </Link>
+            <VoirExemple />
             <p className="text-sm text-muted">
               ≈ 10 minutes · Léger, utilisable avec une connexion lente
             </p>

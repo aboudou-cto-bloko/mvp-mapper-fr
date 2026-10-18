@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useId, useRef, useState, type FormEvent } from "react";
 import { ChoixCategorie } from "@/components/choix-categorie";
 import { CATEGORIES_UI } from "@/components/categories-ui";
+import { SuggestionsLocales } from "@/components/suggestions-locales";
 import { Bandeau, champ, Statut } from "@/components/ui";
 import {
   FONCTIONNALITES_MAX,
@@ -21,17 +22,19 @@ function Resume({
   compteurs,
   message,
   annonce,
+  cleAnnonce,
   trop,
 }: {
   compteurs: Compteurs;
   message: string;
   annonce: string;
+  cleAnnonce: number;
   trop: boolean;
 }) {
   return (
     <section
       aria-label="Résumé"
-      className="flex flex-col gap-3 rounded-2xl border border-line bg-surface p-4 lg:sticky lg:top-6"
+      className="flex flex-col gap-3 rounded-2xl border border-line bg-surface p-4"
     >
       <ul className="grid grid-cols-4 gap-2">
         {CATEGORIES_UI.map((c) => (
@@ -46,7 +49,9 @@ function Resume({
       </ul>
       <div role="status" aria-live="polite">
         <Bandeau trop={trop}>{message}</Bandeau>
-        <span className="sr-only">{annonce}</span>
+        <span key={cleAnnonce} className="sr-only">
+          {annonce}
+        </span>
       </div>
     </section>
   );
@@ -91,7 +96,7 @@ function Ligne({
             }
           }}
           autoComplete="off"
-          className="min-h-11 min-w-0 flex-1 break-words rounded-lg border border-transparent bg-transparent px-2 text-base font-semibold hover:border-line"
+          className="min-h-11 min-w-0 flex-1 break-words rounded-lg border border-control-line bg-transparent px-2 text-base font-semibold hover:bg-primary-soft"
         />
         <button
           type="button"
@@ -115,15 +120,27 @@ function Ligne({
 }
 
 export function FonctionnalitesEditeur() {
-  const { projet, pret, etat, ajouterFonctionnalite, classer, renommer, supprimer } =
-    useProjet();
+  const {
+    projet,
+    pret,
+    etat,
+    ajouterFonctionnalite,
+    ajouterSuggestion,
+    classer,
+    renommer,
+    supprimer,
+  } = useProjet();
   const id = useId();
   const aideId = `${id}-aide`;
   const limiteId = `${id}-limite`;
   const [saisie, setSaisie] = useState("");
-  const [annonce, setAnnonce] = useState("");
+  const [annonceEtat, setAnnonceEtat] = useState({ texte: "", cle: 0 });
   const saisieRef = useRef<HTMLInputElement>(null);
   const titreListeRef = useRef<HTMLHeadingElement>(null);
+
+  // La clé change à chaque annonce : deux messages identiques sont relus.
+  const annoncer = (texte: string) =>
+    setAnnonceEtat((a) => ({ texte, cle: a.cle + 1 }));
 
   const fs = projet.fonctionnalites;
   const compteurs = compterParCategorie(fs);
@@ -137,14 +154,14 @@ export function FonctionnalitesEditeur() {
     const titre = saisie.trim();
     if (ajouterFonctionnalite(saisie)) {
       setSaisie("");
-      setAnnonce(`Fonctionnalité ajoutée : ${titre} (${fs.length + 1} au total)`);
+      annoncer(`Fonctionnalité ajoutée : ${titre} (${fs.length + 1} au total)`);
     }
     saisieRef.current?.focus();
   };
 
   const surSuppression = (f: Fonctionnalite) => {
     if (supprimer(f.id)) {
-      setAnnonce(`Fonctionnalité supprimée : ${f.titre} (${fs.length - 1} au total)`);
+      annoncer(`Fonctionnalité supprimée : ${f.titre} (${fs.length - 1} au total)`);
       titreListeRef.current?.focus();
     }
   };
@@ -189,6 +206,14 @@ export function FonctionnalitesEditeur() {
             )}
           </form>
 
+          <SuggestionsLocales
+            pret={pret}
+            fonctionnalites={fs}
+            ajouterSuggestion={ajouterSuggestion}
+            onAnnonce={annoncer}
+            className="flex lg:hidden"
+          />
+
           <section className="flex flex-col gap-3">
             <h2
               ref={titreListeRef}
@@ -223,12 +248,20 @@ export function FonctionnalitesEditeur() {
           </section>
         </div>
 
-        <div className="order-1 lg:order-2">
+        <div className="order-1 flex flex-col gap-4 lg:sticky lg:top-6 lg:order-2 lg:max-h-[calc(100dvh-3rem)] lg:overflow-y-auto">
           <Resume
             compteurs={compteurs}
             message={messageResume(compteurs)}
-            annonce={annonce}
+            annonce={annonceEtat.texte}
+            cleAnnonce={annonceEtat.cle}
             trop={compteurs.must > MUST_MAX_CONSEILLE}
+          />
+          <SuggestionsLocales
+            pret={pret}
+            fonctionnalites={fs}
+            ajouterSuggestion={ajouterSuggestion}
+            onAnnonce={annoncer}
+            className="hidden lg:flex"
           />
         </div>
       </div>

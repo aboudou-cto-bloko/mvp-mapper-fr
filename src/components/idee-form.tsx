@@ -1,9 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { useId } from "react";
+import { useId, useRef } from "react";
+import { ExempleProjetActions } from "@/components/exemple-projet";
 import { champ, Statut } from "@/components/ui";
-import { NOM_MAX, PROBLEME_MAX, type Projet } from "@/lib/projet";
+import { NOM_MAX, PROBLEME_MAX, estVide, type Projet } from "@/lib/projet";
 import { useProjet } from "@/lib/use-projet";
 
 type Appareil = NonNullable<Projet["appareil"]>;
@@ -59,7 +60,8 @@ function Choix<T extends string>({
 }
 
 export function IdeeForm() {
-  const { projet, maj, pret, etat } = useProjet();
+  const { projet, maj, pret, etat, remplacerProjet } = useProjet();
+  const nomRef = useRef<HTMLInputElement>(null);
   const id = useId();
   const aideId = `${id}-aide`;
   const peutContinuer = pret && projet.nom.trim().length > 0;
@@ -76,6 +78,7 @@ export function IdeeForm() {
         </label>
         <input
           id={`${id}-nom`}
+          ref={nomRef}
           type="text"
           maxLength={NOM_MAX}
           disabled={!pret}
@@ -128,6 +131,15 @@ export function IdeeForm() {
           et plus facile à construire.
         </p>
       </aside>
+
+      <ExempleProjetActions
+        variante="zero"
+        masque={!pret || estVide(projet)}
+        pret={pret}
+        remplacerProjet={remplacerProjet}
+        projetCourant={projet}
+        apresEfface={() => nomRef.current?.focus()}
+      />
 
       <div className="sticky bottom-0 -mx-4 mt-auto flex flex-col gap-2 border-t border-line bg-bg px-4 py-3 sm:static sm:mx-0 sm:border-0 sm:bg-transparent sm:px-0">
         <div aria-live="polite" className="min-h-5">

@@ -10,13 +10,16 @@ import {
   etapesEcritureSchema,
   ecrireProjet,
   lireProjet,
+  projetApresStorage,
   fonctionnalitesEcritureSchema,
   projetVide,
   type Categorie,
   type EtapeParcours,
   type Fonctionnalite,
   type Projet,
+  type SuggestionCle,
 } from "./projet";
+import { SUGGESTIONS, suggestionPresente } from "./suggestions";
 
 type Patch = Partial<Omit<Projet, "modifieLe">>;
 
@@ -55,9 +58,23 @@ export function useProjet() {
     const surMasque = () => {
       if (document.visibilityState === "hidden") flush();
     };
+    // Autre onglet : son état fait foi, l'état local périmé (et son écriture en attente) est abandonné.
+    const surStorage = (e: StorageEvent) => {
+      const suivant = projetApresStorage(e.key, lireProjet);
+      if (suivant === null) return;
+      if (minuteur.current !== null) {
+        clearTimeout(minuteur.current);
+        minuteur.current = null;
+      }
+      courant.current = suivant;
+      sale.current = false;
+      setProjet(suivant);
+    };
+    window.addEventListener("storage", surStorage);
     window.addEventListener("pagehide", flush);
     document.addEventListener("visibilitychange", surMasque);
     return () => {
+      window.removeEventListener("storage", surStorage);
       window.removeEventListener("pagehide", flush);
       document.removeEventListener("visibilitychange", surMasque);
       flush();
@@ -100,6 +117,36 @@ export function useProjet() {
       }),
     [appliquer],
   );
+
+  const ajouterSuggestion = useCallback(
+    (cle: SuggestionCle): "ajoutee" | "deja" | "limite" => {
+      const fs = courant.current.fonctionnalites;
+      if (suggestionPresente(fs, cle)) return "deja";
+      const s = SUGGESTIONS.find((x) => x.cle === cle);
+      if (!s || fs.length >= FONCTIONNALITES_MAX) return "limite";
+      return appliquer((liste) => [...liste, creerFonctionnalite(s.titre, s.categorie, s.cle)])
+        ? "ajoutee"
+        : "limite";
+    },
+    [appliquer],
+  );
+
+  /** Remplace tout le projet et écrit immédiatement (sans debounce). */
+  const remplacerProjet = useCallback((p: Projet): boolean => {
+    if (minuteur.current !== null) {
+      clearTimeout(minuteur.current);
+      minuteur.current = null;
+    }
+    // courant d'abord : un flush (démontage/pagehide) ne doit pas réécrire l'ancien état.
+    courant.current = p;
+    sale.current = false;
+    setProjet(p);
+    const ok = ecrireProjet(p);
+    setEtat(ok ? "enregistre" : "erreur");
+    return ok;
+  }, []);
+
+  const reinitialiser = useCallback((): boolean => remplacerProjet(projetVide()), [remplacerProjet]);
 
   const classer = useCallback(
     (id: string, categorie: Categorie): boolean =>
@@ -175,6 +222,9 @@ export function useProjet() {
     pret,
     etat,
     ajouterFonctionnalite,
+    ajouterSuggestion,
+    remplacerProjet,
+    reinitialiser,
     classer,
     renommer,
     supprimer,

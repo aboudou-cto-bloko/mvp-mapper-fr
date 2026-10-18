@@ -13,10 +13,20 @@ export const CATEGORIES = ["must", "should", "could", "wont"] as const;
 export type Categorie = (typeof CATEGORIES)[number];
 export const CATEGORIE_PAR_DEFAUT: Categorie = "should";
 
+export const SUGGESTION_CLES = ["mobile-money", "whatsapp", "hors-ligne", "faible-debit"] as const;
+export type SuggestionCle = (typeof SUGGESTION_CLES)[number];
+
+/** Écriture : stricte, une suggestion invalide est rejetée. */
 export const fonctionnaliteSchema = z.object({
   id: z.string().min(1).max(64),
   titre: z.string().trim().min(1).max(TITRE_MAX),
   categorie: z.enum(CATEGORIES),
+  suggestion: z.enum(SUGGESTION_CLES).optional(),
+});
+
+/** Lecture (localStorage) : une suggestion invalide est ignorée, la fonctionnalité est gardée. */
+const fonctionnaliteLectureSchema = fonctionnaliteSchema.extend({
+  suggestion: z.enum(SUGGESTION_CLES).optional().catch(undefined),
 });
 
 export type Fonctionnalite = z.infer<typeof fonctionnaliteSchema>;
@@ -50,7 +60,7 @@ function lectureTolerante<S extends z.ZodType>(schema: S, max: number) {
 export const fonctionnalitesEcritureSchema = z.array(fonctionnaliteSchema).max(FONCTIONNALITES_MAX);
 export const etapesEcritureSchema = z.array(etapeSchema).max(ETAPES_MAX);
 
-const fonctionnalitesLectureSchema = lectureTolerante(fonctionnaliteSchema, FONCTIONNALITES_MAX);
+const fonctionnalitesLectureSchema = lectureTolerante(fonctionnaliteLectureSchema, FONCTIONNALITES_MAX);
 const etapesLectureSchema = lectureTolerante(etapeSchema, ETAPES_MAX);
 
 /** Lecture tolérante champ par champ : un champ invalide retombe sur sa valeur par défaut. */
@@ -87,6 +97,16 @@ export function lireProjet(): Projet | null {
   }
 }
 
+/**
+ * Réaction à un événement `storage` d'un autre onglet.
+ * Retourne null si l'événement ne concerne pas le projet, sinon le projet à adopter
+ * (clé null = clear, ou valeur absente/illisible : projet vide).
+ */
+export function projetApresStorage(cle: string | null, lire: () => Projet | null): Projet | null {
+  if (cle !== null && cle !== CLE_PROJET) return null;
+  return lire() ?? projetVide();
+}
+
 export function ecrireProjet(p: Projet): boolean {
   try {
     window.localStorage.setItem(CLE_PROJET, JSON.stringify(p));
@@ -102,8 +122,26 @@ function nouvelId(): string {
     : `f-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
-export function creerFonctionnalite(titre: string, categorie: Categorie): Fonctionnalite {
-  return { id: nouvelId(), titre: titre.trim(), categorie };
+export function creerFonctionnalite(
+  titre: string,
+  categorie: Categorie,
+  suggestion?: SuggestionCle,
+): Fonctionnalite {
+  const f: Fonctionnalite = { id: nouvelId(), titre: titre.trim(), categorie };
+  if (suggestion !== undefined) f.suggestion = suggestion;
+  return f;
+}
+
+/** Projet sans aucune saisie : nom seul = non vide. */
+export function estVide(p: Projet): boolean {
+  return (
+    p.nom.trim() === "" &&
+    p.probleme.trim() === "" &&
+    p.fonctionnalites.length === 0 &&
+    p.parcours.length === 0 &&
+    p.appareil === null &&
+    p.connexion === null
+  );
 }
 
 export function creerEtape(texte: string): EtapeParcours {

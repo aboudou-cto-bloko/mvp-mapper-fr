@@ -4,8 +4,13 @@ import {
   NOM_MAX,
   PROBLEME_MAX,
   creerEtape,
+  creerFonctionnalite,
+  estVide,
   etapeSchema,
   etapesEcritureSchema,
+  fonctionnalitesEcritureSchema,
+  projetApresStorage,
+  CLE_PROJET,
   projetSchema,
   projetVide,
 } from "./projet";
@@ -87,5 +92,53 @@ describe("étapes", () => {
     const a = creerEtape("  salut ");
     expect(a.texte).toBe("salut");
     expect(a.id).not.toBe(creerEtape("x").id);
+  });
+});
+
+describe("suggestion (additif)", () => {
+  it("tag valide conservé, invalide ignoré sans rejeter la fonctionnalité", () => {
+    const r = projetSchema.parse({
+      ...base,
+      fonctionnalites: [
+        { id: "a", titre: "A", categorie: "must", suggestion: "whatsapp" },
+        { id: "b", titre: "B", categorie: "must", suggestion: "nimporte" },
+        { id: "c", titre: "C", categorie: "must" },
+      ],
+    });
+    expect(r.fonctionnalites.map((f) => f.suggestion)).toEqual(["whatsapp", undefined, undefined]);
+    expect(r.fonctionnalites).toHaveLength(3);
+  });
+
+  it("creerFonctionnalite pose le tag", () => {
+    expect(creerFonctionnalite("T", "must", "hors-ligne").suggestion).toBe("hors-ligne");
+    expect(creerFonctionnalite("T", "must")).not.toHaveProperty("suggestion");
+  });
+});
+
+describe("estVide", () => {
+  it("projet vide", () => expect(estVide(projetVide())).toBe(true));
+  it("nom seul = non vide", () => expect(estVide({ ...projetVide(), nom: "x" })).toBe(false));
+  it("connexion seule = non vide", () => expect(estVide({ ...projetVide(), connexion: "bonne" })).toBe(false));
+});
+
+describe("écriture stricte de suggestion", () => {
+  it("rejette une suggestion invalide, accepte une valide", () => {
+    expect(fonctionnalitesEcritureSchema.safeParse([{ id: "a", titre: "A", categorie: "must", suggestion: "x" }]).success).toBe(false);
+    expect(fonctionnalitesEcritureSchema.safeParse([{ id: "a", titre: "A", categorie: "must", suggestion: "whatsapp" }]).success).toBe(true);
+    expect(fonctionnalitesEcritureSchema.safeParse([{ id: "a", titre: "A", categorie: "must" }]).success).toBe(true);
+  });
+});
+
+describe("projetApresStorage", () => {
+  const p = { ...projetVide(), nom: "autre onglet" };
+  it("ignore une autre clé", () => {
+    expect(projetApresStorage("autre", () => p)).toBeNull();
+  });
+  it("relit le projet pour la bonne clé", () => {
+    expect(projetApresStorage(CLE_PROJET, () => p)).toEqual(p);
+  });
+  it("clé absente (clear) ou valeur supprimée : projet vide", () => {
+    expect(projetApresStorage(null, () => null)).toEqual(projetVide());
+    expect(projetApresStorage(CLE_PROJET, () => null)).toEqual(projetVide());
   });
 });

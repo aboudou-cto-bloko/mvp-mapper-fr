@@ -1,4 +1,5 @@
-import { MUST_MAX_CONSEILLE, ETAPES_MIN, type Fonctionnalite, type Projet } from "./projet";
+import { MUST_MAX_CONSEILLE, ETAPES_MIN, type Fonctionnalite, type Projet, type SuggestionCle } from "./projet";
+import { contraintesActives } from "./suggestions";
 
 const VIDE = "?";
 
@@ -19,12 +20,20 @@ export function nettoyer(s: string): string {
 
 const ligne = nettoyer;
 
+const BLOC_LIGNES_MAX = 10;
+
 /** Texte multiligne en citation Markdown (chaque ligne nettoyée). */
 function bloc(s: string): string {
-  const lignes = s.split(/\r?\n/).map(ligne);
-  while (lignes.length > 0 && lignes[0] === "") lignes.shift();
-  while (lignes.length > 0 && lignes[lignes.length - 1] === "") lignes.pop();
-  if (lignes.length === 0) return VIDE;
+  const brutes = s.split(/\r?\n/).map(ligne);
+  while (brutes.length > 0 && brutes[0] === "") brutes.shift();
+  while (brutes.length > 0 && brutes[brutes.length - 1] === "") brutes.pop();
+  if (brutes.length === 0) return VIDE;
+  // Une seule ligne vide consécutive ; au-delà du plafond, le reste est replié sur la dernière ligne.
+  const lignes = brutes.filter((l, i) => l !== "" || brutes[i - 1] !== "");
+  if (lignes.length > BLOC_LIGNES_MAX) {
+    const reste = lignes.splice(BLOC_LIGNES_MAX - 1).filter((l) => l !== "");
+    lignes.push(reste.join(" "));
+  }
   return lignes.map((l) => (l === "" ? ">" : `> ${l}`)).join("\n");
 }
 
@@ -52,21 +61,108 @@ function puces(items: readonly string[], compact = false): string {
   return items.length === 0 ? `- ${VIDE}` : items.map((t) => `- ${ligne(t)}`).join("\n");
 }
 
-/** Répartit les Must en tranches : nombre = min(must, clamp(ceil(must/2), 3, 5)), reste aux premières. */
-export function repartirTranches(musts: readonly string[]): string[][] {
-  const m = musts.length;
-  if (m === 0) return [];
-  const n = Math.min(m, Math.min(5, Math.max(3, Math.ceil(m / 2))));
-  const base = Math.floor(m / n);
-  const reste = m % n;
-  const tranches: string[][] = [];
+export type Tranche = { titre: string; elements: string[] };
+
+const SUFFIXE_TRANCHE = " — vérifier que l'app reste utilisable après cette tranche";
+
+const LIBELLES_CONTRAINTES: Record<SuggestionCle, string> = {
+  "mobile-money": "Mobile Money",
+  whatsapp: "WhatsApp",
+  "hors-ligne": "hors-ligne",
+  "faible-debit": "faible débit",
+};
+
+const CRITERES_CONTRAINTES: Record<SuggestionCle, string> = {
+  "mobile-money": "Le paiement Mobile Money est testé en bac à sable (échec et annulation compris)",
+  whatsapp: "Les messages WhatsApp partent avec un texte en français relu",
+  "hors-ligne": "Une action interrompue par une coupure se reprend sans perte",
+  "faible-debit": "Page principale légère, testée en connexion lente",
+};
+
+const CONTEXTE_PAIEMENT = "paiement Mobile Money (bac à sable d'abord, gestion de l'échec)";
+const CONTEXTE_WHATSAPP = "messages WhatsApp en français (modèle de message, repli si l'envoi échoue)";
+
+function normaliserMots(s: string): string {
+  return s
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[-\u2010-\u2015_]+/g, " ")
+    .replace(/\s+/g, " ");
+}
+
+const MOTS_PAIEMENT = ["paiement", "mobile money"];
+const MOTS_PAIEMENT_MOBILE_MONEY = ["momo", "orange money", "mtn", "moov"];
+const MOTS_MESSAGE = ["whatsapp", "sms", "notification", "rappel", "e mail", "email", "mail"];
+
+function motsPaiement(contraintes: readonly SuggestionCle[]): readonly string[] {
+  return contraintes.includes("mobile-money") ? [...MOTS_PAIEMENT, ...MOTS_PAIEMENT_MOBILE_MONEY] : MOTS_PAIEMENT;
+}
+
+function contient(titre: string, mots: readonly string[]): boolean {
+  const t = normaliserMots(titre);
+  return mots.some((m) => t.includes(m));
+}
+
+function estIntegration(titre: string, contraintes: readonly SuggestionCle[]): boolean {
+  return contient(titre, motsPaiement(contraintes)) || contient(titre, MOTS_MESSAGE);
+}
+
+type TrancheInterne = { titre: string; elements: string[]; musts: string[] };
+
+function promptDe(titresMust: readonly string[], contextes: readonly string[]): string {
+  const base = titresMust.map(pourPrompt).filter((t) => t !== "").join(" + ");
+  const ctx = contextes.length > 0 ? ` — ${contextes.join(" ; ")}` : "";
+  return `/feature "${base}${ctx}${SUFFIXE_TRANCHE}"`;
+}
+
+function planifier(fs: readonly Fonctionnalite[], contraintes: readonly SuggestionCle[]): TrancheInterne[] {
+  const musts = titres(fs, "must").filter((t) => pourPrompt(t) !== "");
+  if (musts.length === 0) return [];
+  const estInteg = (t: string) => estIntegration(t, contraintes);
+  const [premier, ...reste] = musts;
+  const tranches: TrancheInterne[] = [
+    {
+      titre: "Socle",
+      musts: [premier],
+      elements: [
+        `/feature "Structure de l'app et première page fonctionnelle affichant : ${pourPrompt(premier)} ${estInteg(premier) ? "" : " (sans paiements ni messages)"}${SUFFIXE_TRANCHE}"`,
+      ],
+    },
+  ];
+  if (reste.length === 0) return tranches;
+
+  // Tri stable : cœur puis intégrations.
+  const coeur = reste.filter((t) => !estInteg(t));
+  const integrations = reste.filter(estInteg);
+  const ordonnes = [...coeur, ...integrations];
+
+  const n = Math.min(4, Math.ceil(ordonnes.length / 2));
+  // Tailles équilibrées : le surplus est réparti sur les premières tranches.
+  const base = Math.floor(ordonnes.length / n);
+  const surplus = ordonnes.length % n;
   let debut = 0;
   for (let i = 0; i < n; i++) {
-    const taille = base + (i < reste ? 1 : 0);
-    tranches.push(musts.slice(debut, debut + taille));
+    const taille = base + (i < surplus ? 1 : 0);
+    const groupe = ordonnes.slice(debut, debut + taille);
     debut += taille;
+    const nbIntegr = groupe.filter(estInteg).length;
+    const contextes: string[] = [];
+    if (contraintes.includes("mobile-money") && groupe.some((t) => contient(t, motsPaiement(contraintes)))) {
+      contextes.push(CONTEXTE_PAIEMENT);
+    }
+    if (contraintes.includes("whatsapp") && groupe.some((t) => contient(t, MOTS_MESSAGE))) {
+      contextes.push(CONTEXTE_WHATSAPP);
+    }
+    const titre = nbIntegr === 0 ? "Cœur" : nbIntegr === groupe.length ? "Intégrations" : "Cœur et intégrations";
+    tranches.push({ titre, musts: groupe, elements: [promptDe(groupe, contextes)] });
   }
   return tranches;
+}
+
+/** Tranches de construction : Socle, puis Must « cœur » avant « intégrations », 5 tranches max. */
+export function planifierTranches(fs: readonly Fonctionnalite[], contraintes: readonly SuggestionCle[]): Tranche[] {
+  return planifier(fs, contraintes).map(({ titre, elements }) => ({ titre, elements }));
 }
 
 export function nomFichierPrd(nom: string): string {
@@ -100,23 +196,27 @@ export function genererPrd(p: Projet): string {
   const date = ligne(p.modifieLe.slice(0, 10));
 
   const compact = musts.length > SEUIL_COMPACT_MUST || p.fonctionnalites.length > SEUIL_COMPACT_TOTAL;
-  const tranchesMust = repartirTranches(musts);
+  const contraintes = contraintesActives(p.fonctionnalites);
+  const tranchesMust = planifier(p.fonctionnalites, contraintes);
 
   // Compact : un critère par tranche de Must au lieu d'un par Must.
   const criteres: string[] = compact
-    ? tranchesMust.map((g, i) => `- [ ] Tranche ${i + 1} : ${g.map(ligne).join(" ; ")} fonctionnent de bout en bout`)
+    ? tranchesMust.map((g, i) => `- [ ] Tranche ${i + 1} : ${g.musts.map(ligne).join(" ; ")} fonctionnent de bout en bout`)
     : musts.map((t) => `- [ ] ${ligne(t)} fonctionne de bout en bout`);
   if (p.connexion === "instable") criteres.push("- [ ] Utilisable sur connexion instable");
   if (p.appareil === "smartphone" || p.appareil === "les-deux") {
     criteres.push("- [ ] Utilisable sur smartphone (360 px)");
   }
   if (n > 0) criteres.push(`- [ ] Le parcours en ${n} étapes se déroule du début à la fin`);
+  for (const c of contraintes) criteres.push(`- [ ] ${CRITERES_CONTRAINTES[c]}`);
   criteres.push("- [ ] Mesure de succès : [à compléter]", "- [ ] Budget de performance : [à compléter]");
 
-  const tranches = tranchesMust
-    .map((groupe) => groupe.map(pourPrompt).filter((t) => t !== ""))
-    .filter((titresPrompt) => titresPrompt.length > 0)
-    .map((titresPrompt, i) => `${i + 1}. \`/feature "${titresPrompt.join(" + ")}"\``);
+  const tranches = tranchesMust.map((t, i) => `${i + 1}. ${t.titre} : \`${t.elements.join(" ")}\``);
+  const shoulds = titres(p.fonctionnalites, "should");
+  const apresV1 =
+    shoulds.length === 0
+      ? "les Could"
+      : `les Should (${shoulds.slice(0, 5).map(ligne).join(", ")}${shoulds.length > 5 ? ", …" : ""}), puis les Could`;
 
   const questions = ["Prix ou modèle économique ?", "Cible utilisateur précise ?", "Stack et hébergement ?"];
   if (musts.length > MUST_MAX_CONSEILLE) {
@@ -133,6 +233,7 @@ export function genererPrd(p: Projet): string {
       `- Cible : ${VIDE}`,
       `- Appareil : ${p.appareil ? APPAREILS[p.appareil] : VIDE}`,
       `- Connexion : ${p.connexion ?? VIDE}`,
+      `- Contraintes locales : ${contraintes.length === 0 ? "aucune renseignée" : contraintes.map((c) => LIBELLES_CONTRAINTES[c]).join(", ")}`,
     ].join("\n"),
     `## Parcours\n\n${n === 0 ? VIDE : p.parcours.map((e, i) => `${i + 1}. ${ligne(e.texte)}`).join("\n")}`,
     [
@@ -151,7 +252,7 @@ export function genererPrd(p: Projet): string {
     `## Tranches de construction\n\n${
       tranches.length === 0
         ? VIDE
-        : `${tranches.join("\n")}\n\nOrdre à ajuster selon les dépendances. Les Should viennent après la v1.`
+        : `${tranches.join("\n")}\n\nOrdre proposé, à ajuster selon les dépendances. Après la v1 : ${apresV1}.`
     }`,
     `## Questions ouvertes\n\n${questions.map((q) => `- ${q}`).join("\n")}`,
   ];

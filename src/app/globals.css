@@ -18,6 +18,9 @@
   --could-ink: #8a5a14; /* 5,18:1 sur could-soft */
   --wont: #5e6b63;
   --wont-soft: #ececea;
+  /* destructif : blanc sur danger 6,47:1 ; ink sur danger-soft >= 4,5:1 */
+  --danger: #b91c1c;
+  --danger-soft: #fef2f2;
 }
 
 @theme inline {
@@ -37,6 +40,8 @@
   --color-could-ink: var(--could-ink);
   --color-wont: var(--wont);
   --color-wont-soft: var(--wont-soft);
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
   --font-sans: var(--font-inter), system-ui, sans-serif;
 }
 
