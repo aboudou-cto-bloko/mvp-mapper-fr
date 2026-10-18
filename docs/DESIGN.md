@@ -36,6 +36,7 @@ Statut : **maquette validée** par l'utilisateur. Correction relevée dans Lunac
 | Won't | `#5E6B63` (fond doux `#ECECEA`) |
 | Texte Should sur fond doux (AA) | `#1F4FD6` (5,48:1) |
 | Texte Could sur fond doux (AA) | `#8A5A14` (5,18:1) |
+| Bordure des contrôles (AA 3:1) | `#848E87` |
 | Police | Inter (Regular, Medium, SemiBold, Bold) |
 | Rayons | cartes 16–24, champs 12–14, boutons pilule |
 | Espacement | 4 / 8 / 12 / 16 / 24 / 32 |
