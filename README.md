@@ -1,36 +1,43 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# MVP Mapper
 
-## Getting Started
+Outil gratuit, en français, qui transforme une idée de projet en carte MVP (Must, Should, Could, Won't, avec ligne MVP) et exporte un `PRD.md` prêt à donner à Claude Code. Sans compte : les données restent dans le navigateur.
 
-First, run the development server:
+## Parcours
+
+1. **Idée** : nom, problème, appareil et connexion de la cible.
+2. **Fonctionnalités** : liste, classement Must/Should/Could/Won't, suggestions locales (Mobile Money, WhatsApp, hors-ligne, faible débit), exemple pré-rempli.
+3. **Carte MVP** : ligne MVP et alerte si trop de Must.
+4. **Parcours** : 4 à 7 étapes du parcours utilisateur.
+5. **Export** : `PRD.md` à télécharger ou copier, avec tranches `/feature`.
+
+## Commandes
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm run dev         # serveur de développement
+npm run typecheck   # TypeScript (app et tests)
+npm run lint        # ESLint
+npm test            # tests Vitest
+npm run build       # build de production
+npm start           # sert le build
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Structure
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+- `src/app` : routes (pages serveur statiques), layout, icône.
+- `src/components` : composants d'interface ; les éditeurs sont des composants client.
+- `src/lib` : logique pure (schéma Zod, hook `useProjet`, générateur de PRD, suggestions, exemple) et ses tests.
+- `docs` : PRD, design, architecture.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Données
 
-## Learn More
+Le projet est enregistré dans le `localStorage` sous la clé `mvp-mapper-fr:projet:v1`. L'application n'émet aucune requête sortante. La lecture est tolérante (champs invalides ignorés ou remis par défaut) ; en cas de changement de schéma incompatible, la clé passera à `v2` avec une migration depuis `v1` (pas encore nécessaire). Vider les données du site efface le projet.
 
-To learn more about Next.js, take a look at the following resources:
+## Déploiement
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Prévu sur Vercel (`npm run build`, aucune variable d'environnement). Les en-têtes de sécurité et la CSP sont définis dans `next.config.ts` (CSP en production uniquement).
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## État du projet
 
-## Deploy on Vercel
+MVP fonctionnel : les 5 écrans, la sauvegarde locale, les suggestions, l'exemple et l'export sont en place. Pas de multi-projets, d'import ni de mode sombre pour l'instant.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Licence : à définir.

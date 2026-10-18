@@ -2,7 +2,7 @@
 
 # mvp-mapper-fr
 
-> TODO : une phrase sur le produit et sa cible.
+> Outil gratuit en français qui aide les développeurs francophones d'Afrique à transformer une idée en carte MVP (Must/Should/Could/Won't, ligne MVP) et à exporter un `PRD.md` prêt pour Claude Code, sans compte, données locales.
 
 Stack : Next.js 16 · TypeScript · Tailwind.
 
