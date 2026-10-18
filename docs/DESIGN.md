@@ -1,6 +1,6 @@
 # Design — mvp-mapper-fr
 
-Maquette dans Lunacy (page courante) : 7 frames. Références : tableau Pinterest privé « MVP Mapper FR - UI » (4 épingles : matrice de priorisation, 2 formulaires en étapes, hero de landing).
+Maquette dans Lunacy : 7 frames. Références d'inspiration : matrice de priorisation, formulaires en étapes, hero de landing SaaS.
 
 Statut : **maquette validée** par l'utilisateur. Correction relevée dans Lunacy : sur l'accueil, la rangée de 3 cartes du bas (Mobile Money, WhatsApp, Connexion faible) est supprimée ; l'accueil = barre, hero, aperçu de la carte MVP.
 
