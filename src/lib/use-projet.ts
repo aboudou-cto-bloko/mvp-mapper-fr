@@ -4,12 +4,16 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import {
   CATEGORIE_PAR_DEFAUT,
   FONCTIONNALITES_MAX,
+  ETAPES_MAX,
+  creerEtape,
   creerFonctionnalite,
+  etapesEcritureSchema,
   ecrireProjet,
   lireProjet,
   fonctionnalitesEcritureSchema,
   projetVide,
   type Categorie,
+  type EtapeParcours,
   type Fonctionnalite,
   type Projet,
 } from "./projet";
@@ -116,5 +120,67 @@ export function useProjet() {
     [appliquer],
   );
 
-  return { projet, maj, pret, etat, ajouterFonctionnalite, classer, renommer, supprimer };
+  const appliquerEtapes = useCallback(
+    (transforme: (es: EtapeParcours[]) => EtapeParcours[] | null): boolean => {
+      const suivantes = transforme(courant.current.parcours);
+      if (suivantes === null) return false;
+      const ok = etapesEcritureSchema.safeParse(suivantes);
+      if (!ok.success) return false;
+      maj({ parcours: ok.data });
+      return true;
+    },
+    [maj],
+  );
+
+  const ajouterEtape = useCallback(
+    (texte: string): boolean =>
+      appliquerEtapes((es) => {
+        if (texte.trim().length === 0 || es.length >= ETAPES_MAX) return null;
+        return [...es, creerEtape(texte)];
+      }),
+    [appliquerEtapes],
+  );
+
+  const modifierEtape = useCallback(
+    (id: string, texte: string): boolean =>
+      appliquerEtapes((es) => {
+        if (texte.trim().length === 0 || !es.some((e) => e.id === id)) return null;
+        return es.map((e) => (e.id === id ? { ...e, texte } : e));
+      }),
+    [appliquerEtapes],
+  );
+
+  const supprimerEtape = useCallback(
+    (id: string): boolean =>
+      appliquerEtapes((es) => (es.some((e) => e.id === id) ? es.filter((e) => e.id !== id) : null)),
+    [appliquerEtapes],
+  );
+
+  const deplacerEtape = useCallback(
+    (id: string, delta: -1 | 1): boolean =>
+      appliquerEtapes((es) => {
+        const i = es.findIndex((e) => e.id === id);
+        const j = i + delta;
+        if (i < 0 || j < 0 || j >= es.length) return null;
+        const copie = [...es];
+        [copie[i], copie[j]] = [copie[j], copie[i]];
+        return copie;
+      }),
+    [appliquerEtapes],
+  );
+
+  return {
+    projet,
+    maj,
+    pret,
+    etat,
+    ajouterFonctionnalite,
+    classer,
+    renommer,
+    supprimer,
+    ajouterEtape,
+    modifierEtape,
+    supprimerEtape,
+    deplacerEtape,
+  };
 }

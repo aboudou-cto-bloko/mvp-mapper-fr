@@ -21,34 +21,58 @@ export const fonctionnaliteSchema = z.object({
 
 export type Fonctionnalite = z.infer<typeof fonctionnaliteSchema>;
 
-/** Écriture (actions) : stricte, sans rattrapage. */
-export const fonctionnalitesEcritureSchema = z.array(fonctionnaliteSchema).max(FONCTIONNALITES_MAX);
+export const ETAPES_MIN = 4;
+export const ETAPES_MAX = 7;
+export const ETAPE_MAX = 140;
 
-/** Lecture (localStorage) : garde les entrées valides, ignore les autres. */
-const fonctionnalitesLectureSchema = z.unknown().transform((brut): Fonctionnalite[] => {
-  if (!Array.isArray(brut)) return [];
-  const valides: Fonctionnalite[] = [];
-  for (const element of brut as unknown[]) {
-    const r = fonctionnaliteSchema.safeParse(element);
-    if (r.success) valides.push(r.data);
-    if (valides.length >= FONCTIONNALITES_MAX) break;
-  }
-  return valides;
+export const etapeSchema = z.object({
+  id: z.string().min(1).max(64),
+  texte: z.string().trim().min(1).max(ETAPE_MAX),
 });
 
+export type EtapeParcours = z.infer<typeof etapeSchema>;
+
+/** Lecture (localStorage) : garde les entrées valides, ignore les autres, plafonne. */
+function lectureTolerante<S extends z.ZodType>(schema: S, max: number) {
+  return z.unknown().transform((brut): z.output<S>[] => {
+    if (!Array.isArray(brut)) return [];
+    const valides: z.output<S>[] = [];
+    for (const element of brut as unknown[]) {
+      const r = schema.safeParse(element);
+      if (r.success) valides.push(r.data);
+      if (valides.length >= max) break;
+    }
+    return valides;
+  });
+}
+
+/** Écriture (actions) : stricte, sans rattrapage. */
+export const fonctionnalitesEcritureSchema = z.array(fonctionnaliteSchema).max(FONCTIONNALITES_MAX);
+export const etapesEcritureSchema = z.array(etapeSchema).max(ETAPES_MAX);
+
+const fonctionnalitesLectureSchema = lectureTolerante(fonctionnaliteSchema, FONCTIONNALITES_MAX);
+const etapesLectureSchema = lectureTolerante(etapeSchema, ETAPES_MAX);
+
+/** Lecture tolérante champ par champ : un champ invalide retombe sur sa valeur par défaut. */
+const modifieLeSchema = z
+  .string()
+  .refine((s) => s === "" || !Number.isNaN(Date.parse(s)))
+  .catch("");
+
 export const projetSchema = z.object({
-  nom: z.string().max(NOM_MAX).default(""),
-  probleme: z.string().max(PROBLEME_MAX).default(""),
-  appareil: z.enum(["smartphone", "ordinateur", "les-deux"]).nullable().default(null),
-  connexion: z.enum(["bonne", "instable"]).nullable().default(null),
-  fonctionnalites: fonctionnalitesLectureSchema,
-  modifieLe: z.string(),
+  nom: z.string().transform((s) => s.slice(0, NOM_MAX)).catch(""),
+  probleme: z.string().transform((s) => s.slice(0, PROBLEME_MAX)).catch(""),
+  appareil: z.enum(["smartphone", "ordinateur", "les-deux"]).nullable().catch(null),
+  connexion: z.enum(["bonne", "instable"]).nullable().catch(null),
+  fonctionnalites: fonctionnalitesLectureSchema.catch([]),
+  parcours: etapesLectureSchema.catch([]),
+  modifieLe: modifieLeSchema,
 });
 
 export type Projet = z.infer<typeof projetSchema>;
 
 export function projetVide(): Projet {
-  return { nom: "", probleme: "", appareil: null, connexion: null, fonctionnalites: [], modifieLe: "" };
+  return { nom: "", probleme: "", appareil: null, connexion: null, fonctionnalites: [], parcours: [], modifieLe: "" };
 }
 
 export function lireProjet(): Projet | null {
@@ -72,12 +96,18 @@ export function ecrireProjet(p: Projet): boolean {
   }
 }
 
+function nouvelId(): string {
+  return typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+    ? crypto.randomUUID()
+    : `f-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
 export function creerFonctionnalite(titre: string, categorie: Categorie): Fonctionnalite {
-  const id =
-    typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
-      ? crypto.randomUUID()
-      : `f-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
-  return { id, titre: titre.trim(), categorie };
+  return { id: nouvelId(), titre: titre.trim(), categorie };
+}
+
+export function creerEtape(texte: string): EtapeParcours {
+  return { id: nouvelId(), texte: texte.trim() };
 }
 
 export type Compteurs = Record<Categorie, number>;
