@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import { NOM_SITE } from "@/lib/site";
 import "./globals.css";
@@ -14,6 +14,10 @@ export const metadata: Metadata = {
   title: `${NOM_SITE} · De l'idée au PRD qui tient en une page`,
   description:
     "Classe tes fonctionnalités en Must, Should, Could et Won't, trace ta ligne MVP, puis exporte un PRD.md prêt pour Claude Code. Gratuit, en français, sans compte.",
+};
+
+export const viewport: Viewport = {
+  themeColor: "#0B6B4D",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
