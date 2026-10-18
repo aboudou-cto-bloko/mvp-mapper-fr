@@ -40,4 +40,4 @@ Prévu sur Vercel (`npm run build`, aucune variable d'environnement). Les en-tê
 
 MVP fonctionnel : les 5 écrans, la sauvegarde locale, les suggestions, l'exemple et l'export sont en place. Pas de multi-projets, d'import ni de mode sombre pour l'instant.
 
-Licence : à définir.
+Licence : [MIT](LICENSE).
