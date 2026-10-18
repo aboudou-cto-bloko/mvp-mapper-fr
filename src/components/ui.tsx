@@ -6,3 +6,16 @@ export const champ =
 export function Statut({ children }: { children: ReactNode }) {
   return <p className="text-sm text-muted">{children}</p>;
 }
+
+/** Bandeau de message ; teinte ambre douce quand le MVP est trop gros. */
+export function Bandeau({ trop, children }: { trop: boolean; children: ReactNode }) {
+  return (
+    <p
+      className={`rounded-xl px-3 py-2 text-sm font-medium ${
+        trop ? "bg-could-soft text-could-ink" : "bg-bg text-ink"
+      }`}
+    >
+      {children}
+    </p>
+  );
+}

@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useId, useRef, useState, type FormEvent } from "react";
 import { ChoixCategorie } from "@/components/choix-categorie";
 import { CATEGORIES_UI } from "@/components/categories-ui";
-import { champ, Statut } from "@/components/ui";
+import { Bandeau, champ, Statut } from "@/components/ui";
 import {
   FONCTIONNALITES_MAX,
   MUST_MAX_CONSEILLE,
@@ -45,13 +45,7 @@ function Resume({
         ))}
       </ul>
       <div role="status" aria-live="polite">
-        <p
-          className={`rounded-xl px-3 py-2 text-sm font-medium ${
-            trop ? "bg-could-soft text-could-ink" : "bg-bg text-ink"
-          }`}
-        >
-          {message}
-        </p>
+        <Bandeau trop={trop}>{message}</Bandeau>
         <span className="sr-only">{annonce}</span>
       </div>
     </section>
