@@ -1,7 +1,20 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ecrireProjet, lireProjet, projetVide, type Projet } from "./projet";
+import {
+  CATEGORIE_PAR_DEFAUT,
+  FONCTIONNALITES_MAX,
+  creerFonctionnalite,
+  ecrireProjet,
+  lireProjet,
+  fonctionnalitesEcritureSchema,
+  projetVide,
+  type Categorie,
+  type Fonctionnalite,
+  type Projet,
+} from "./projet";
+
+type Patch = Partial<Omit<Projet, "modifieLe">>;
 
 export type EtatSauvegarde = "idle" | "enregistre" | "erreur";
 
@@ -48,10 +61,11 @@ export function useProjet() {
   }, [flush]);
 
   const maj = useCallback(
-    (patch: Partial<Omit<Projet, "modifieLe">>) => {
+    (patch: Patch | ((courant: Projet) => Patch)) => {
+      const delta = typeof patch === "function" ? patch(courant.current) : patch;
       courant.current = {
         ...courant.current,
-        ...patch,
+        ...delta,
         modifieLe: new Date().toISOString(),
       };
       sale.current = true;
@@ -62,5 +76,45 @@ export function useProjet() {
     [flush],
   );
 
-  return { projet, maj, pret, etat };
+  const appliquer = useCallback(
+    (transforme: (fs: Fonctionnalite[]) => Fonctionnalite[] | null): boolean => {
+      const suivantes = transforme(courant.current.fonctionnalites);
+      if (suivantes === null) return false;
+      const ok = fonctionnalitesEcritureSchema.safeParse(suivantes);
+      if (!ok.success) return false;
+      maj({ fonctionnalites: ok.data });
+      return true;
+    },
+    [maj],
+  );
+
+  const ajouterFonctionnalite = useCallback(
+    (titre: string, categorie: Categorie = CATEGORIE_PAR_DEFAUT): boolean =>
+      appliquer((fs) => {
+        if (titre.trim().length === 0 || fs.length >= FONCTIONNALITES_MAX) return null;
+        return [...fs, creerFonctionnalite(titre, categorie)];
+      }),
+    [appliquer],
+  );
+
+  const classer = useCallback(
+    (id: string, categorie: Categorie): boolean =>
+      appliquer((fs) => fs.map((f) => (f.id === id ? { ...f, categorie } : f))),
+    [appliquer],
+  );
+
+  const renommer = useCallback(
+    (id: string, titre: string): boolean =>
+      appliquer((fs) =>
+        titre.trim().length === 0 ? null : fs.map((f) => (f.id === id ? { ...f, titre } : f)),
+      ),
+    [appliquer],
+  );
+
+  const supprimer = useCallback(
+    (id: string): boolean => appliquer((fs) => fs.filter((f) => f.id !== id)),
+    [appliquer],
+  );
+
+  return { projet, maj, pret, etat, ajouterFonctionnalite, classer, renommer, supprimer };
 }

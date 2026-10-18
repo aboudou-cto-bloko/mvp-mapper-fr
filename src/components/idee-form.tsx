@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useId, type ReactNode } from "react";
+import { useId } from "react";
+import { champ, Statut } from "@/components/ui";
 import { NOM_MAX, PROBLEME_MAX, type Projet } from "@/lib/projet";
 import { useProjet } from "@/lib/use-projet";
 
@@ -18,9 +19,6 @@ const CONNEXIONS: { valeur: Connexion; label: string }[] = [
   { valeur: "bonne", label: "Bonne" },
   { valeur: "instable", label: "Instable" },
 ];
-
-const champ =
-  "min-h-12 w-full rounded-xl border border-line bg-surface px-4 py-3 text-base placeholder:text-muted";
 
 function Choix<T extends string>({
   legende,
@@ -58,10 +56,6 @@ function Choix<T extends string>({
       </div>
     </fieldset>
   );
-}
-
-function Statut({ children }: { children: ReactNode }) {
-  return <p className="text-sm text-muted">{children}</p>;
 }
 
 export function IdeeForm() {
