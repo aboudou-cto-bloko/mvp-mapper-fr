@@ -24,7 +24,7 @@ export function SiteHeader() {
         </Link>
         <nav aria-label="Navigation principale" className="flex items-center gap-1 sm:gap-4">
           <a
-            href={`#${ID_APERCU_CARTE}`}
+            href={`/#${ID_APERCU_CARTE}`}
             className="flex min-h-11 items-center rounded-full px-2 text-sm font-medium text-muted hover:text-ink sm:px-3"
           >
             Comment ça marche
