@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Logo } from "@/components/logo";
 import { ID_APERCU_CARTE, NOM_SITE } from "@/lib/site";
 
 export function SiteHeader() {
@@ -9,17 +10,7 @@ export function SiteHeader() {
           href="/"
           className="flex min-h-11 items-center gap-2 rounded-full text-base font-bold"
         >
-          <svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true">
-            <rect width="32" height="32" rx="10" className="fill-primary" />
-            <path
-              d="M8 23V10l8 8 8-8v13"
-              fill="none"
-              stroke="#fff"
-              strokeWidth="2.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
+          <Logo size={36} />
           {NOM_SITE}
         </Link>
         <nav aria-label="Navigation principale" className="flex items-center gap-1 sm:gap-4">
