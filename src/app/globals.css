@@ -1,26 +1,50 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --bg: #f6f4ee;
+  --surface: #ffffff;
+  --ink: #14201a;
+  --muted: #5e6b63;
+  --line: #d9d5c8;
+  --primary: #0b6b4d;
+  --primary-soft: #ddf0e6;
+  --should: #2563eb;
+  --should-soft: #e0e9fd;
+  --could: #b7791f;
+  --could-soft: #fbefd3;
+  /* textes sur fonds doux (WCAG AA >= 4,5:1) */
+  --should-ink: #1f4fd6; /* 5,48:1 sur should-soft */
+  --could-ink: #8a5a14; /* 5,18:1 sur could-soft */
+  --wont: #5e6b63;
+  --wont-soft: #ececea;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-ink: var(--ink);
+  --color-muted: var(--muted);
+  --color-line: var(--line);
+  --color-primary: var(--primary);
+  --color-primary-soft: var(--primary-soft);
+  --color-should: var(--should);
+  --color-should-soft: var(--should-soft);
+  --color-could: var(--could);
+  --color-could-soft: var(--could-soft);
+  --color-should-ink: var(--should-ink);
+  --color-could-ink: var(--could-ink);
+  --color-wont: var(--wont);
+  --color-wont-soft: var(--wont-soft);
+  --font-sans: var(--font-inter), system-ui, sans-serif;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-sans);
+}
+
+:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
 }
